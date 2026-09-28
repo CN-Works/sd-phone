@@ -245,7 +245,7 @@ Players can also open the phone with a keybind (<kbd>F1</kbd> by default), which
 
 The Racing app is unlocked separately by a `racing_usb` item, consumed on use. Drop the `requires` line from its row in `configs/apps.lua` to hand it to everyone instead.
 
-Running unique phones with physical SIM trays (`SimTray` in `configs/uniqueandsim.lua`, ox_inventory only)? Give every phone item a `buttons` entry so players can open its tray:
+Running unique phones with physical SIM trays (`SimTray` in `configs/uniqueandsim.lua`, ox_inventory or one_inventory)? On one_inventory the **SIM Tray** button is added to every phone item for you. On ox_inventory, give every phone item a `buttons` entry so players can open its tray:
 
 ```lua
 buttons = {
