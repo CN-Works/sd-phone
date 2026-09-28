@@ -40,22 +40,19 @@ Scripts and custom apps written for lb-phone, qs-smartphone, gksphone, roadphone
 
 ## Screenshots
 
-Captured from the browser demo using sample data. Click an image to see it full size.
+Captured from the browser demo using sample data. Click an image for the full 1920×1080 version.
 
-<table>
-  <tr>
-    <td width="50%"><a href="docs/previews/01-home-messages.webp"><img src="docs/previews/01-home-messages.webp" alt="Home and Messages" width="100%" /></a></td>
-    <td width="50%"><a href="docs/previews/02-social-apps.webp"><img src="docs/previews/02-social-apps.webp" alt="Photogram and Squawk" width="100%" /></a></td>
-  </tr>
-  <tr>
-    <td><a href="docs/previews/03-maps-ryde.webp"><img src="docs/previews/03-maps-ryde.webp" alt="Maps and Ryde" width="100%" /></a></td>
-    <td><a href="docs/previews/04-banking-marketplace.webp"><img src="docs/previews/04-banking-marketplace.webp" alt="Wallet and Marketplace" width="100%" /></a></td>
-  </tr>
-  <tr>
-    <td><a href="docs/previews/05-weather-health-services.webp"><img src="docs/previews/05-weather-health-services.webp" alt="Weather, Health and Services" width="100%" /></a></td>
-    <td><a href="docs/previews/06-fold-maps.webp"><img src="docs/previews/06-fold-maps.webp" alt="Maps on the opened fold screen" width="100%" /></a></td>
-  </tr>
-</table>
+<p align="center"><a href="docs/previews/01-home-messages.webp"><img src="docs/previews/01-home-messages.webp" alt="Home and Messages" width="960" /></a></p>
+
+<p align="center"><a href="docs/previews/02-social-apps.webp"><img src="docs/previews/02-social-apps.webp" alt="Photogram and Squawk" width="960" /></a></p>
+
+<p align="center"><a href="docs/previews/03-maps-ryde.webp"><img src="docs/previews/03-maps-ryde.webp" alt="Maps and Ryde" width="960" /></a></p>
+
+<p align="center"><a href="docs/previews/04-banking-marketplace.webp"><img src="docs/previews/04-banking-marketplace.webp" alt="Wallet and Marketplace" width="960" /></a></p>
+
+<p align="center"><a href="docs/previews/05-weather-health-services.webp"><img src="docs/previews/05-weather-health-services.webp" alt="Weather, Health and Services" width="960" /></a></p>
+
+<p align="center"><a href="docs/previews/06-fold-maps.webp"><img src="docs/previews/06-fold-maps.webp" alt="Maps on the opened fold screen" width="960" /></a></p>
 
 ---
 
