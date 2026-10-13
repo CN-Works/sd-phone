@@ -3,7 +3,7 @@
 # sd-phone
 
 <a href="https://www.youtube.com/watch?v=65EoH00dlhw">
-  <img width="960" alt="sd-phone banner showing the Home screen with app icons around it" src="docs/previews/sd-phone-banner.webp">
+  <img width="960" alt="sd-phone banner showing the Home screen in front of a wall of app screens" src="docs/previews/sd-phone-banner.webp">
 </a>
 
 <sub>▶ **[Video demo](https://www.youtube.com/watch?v=65EoH00dlhw)**</sub>
