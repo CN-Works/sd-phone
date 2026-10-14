@@ -114,6 +114,8 @@ Already on a [Qbox Dashboard](https://dashboard.qbox.re) plan? You can point upl
 
 ## Apps
 
+<p align="center"><a href="docs/previews/sd-phone-apps.webp"><img src="docs/previews/sd-phone-apps.webp" alt="Every sd-phone app: Communication, Social, Camera and media, World, Games, Job terminals and Utilities, 51 apps in all" width="960" /></a></p>
+
 | | |
 |---|---|
 | **Communication** | Phone (1:1, group and company calls over pma-voice), Messages (SMS, group threads, GIFs, money and location cards), Mail (multi-account, global inboxes), Groups, Dark Chat, Radio, Find Friends |
@@ -170,6 +172,35 @@ page boundaries are that device's own grid.
 
 Requires sd-phone, and only works alongside it. Install it next to this resource and `ensure` it
 after: [github.com/Samuels-Development/sd-tablet](https://github.com/Samuels-Development/sd-tablet)
+
+## Works with sd-computers
+
+<div align="center">
+
+<a href="https://github.com/Samuels-Development/sd-computers"><img width="960" alt="sd-computers: Computers for FiveM, a full desktop on any computer in the city" src="docs/previews/sd-computers-banner.webp"></a>
+
+### [sd-computers](https://github.com/Samuels-Development/sd-computers) puts the phone on every computer in the city
+
+[![sd-computers](https://img.shields.io/badge/sd--computers-free%20and%20open%20source-F0E155?style=for-the-badge&labelColor=101114)](https://github.com/Samuels-Development/sd-computers)
+[![Try it in the browser](https://img.shields.io/badge/Try%20it-fivem.samueldev.shop%2Fcomputer-5FE3C8?style=for-the-badge&labelColor=101114)](https://fivem.samueldev.shop/computer)
+
+</div>
+
+sd-computers is a free desktop for any computer in your city: mail, documents that print to paper,
+a browser, banking, security cameras and hacking minigames, in three looks. With both running, a
+computer becomes another screen for the character's phone:
+
+- **Mail** opens the phone's own accounts, and **Messages**, **Notes** and **Contacts** come to the desktop
+- **Photos** and **Files** show the phone's gallery and documents, to put into a document and print
+- The computer's **Browser** shows the city's public apps as live websites: Weazel News (and its
+  newsroom for staff), the Marketplace, Pages, Squawk, the company directory, the penal code and the
+  stock market
+- Players link their phone to a machine with a code from the **Phone Link** app
+
+Everything done at a desk runs through the phone's own actions, so it is checked, rate limited and
+notified exactly as it is on the phone. There is nothing to set up: the link is
+`server/compat/computers.lua`, it ships with sd-phone **v1.0.7 and newer**, and nothing in it runs until
+sd-computers calls it. `set sd_phone_computerlink "off"` switches it off.
 
 ## Highlights
 
