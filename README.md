@@ -34,6 +34,8 @@ Scripts and custom apps written for lb-phone, qs-smartphone, gksphone, roadphone
 
 [**Live demo**](https://fivem.samueldev.shop/phone) · [**Documentation**](https://docs.samueldev.shop/resources/phone/) · [**Store**](https://fivem.samueldev.shop) · [**Discord**](https://discord.gg/FzPehMQaBQ)
 
+**Works together:** **sd-phone** · [**sd-tablet**](https://github.com/Samuels-Development/sd-tablet) · [**sd-computers**](https://github.com/Samuels-Development/sd-computers)
+
 </div>
 
 ---
