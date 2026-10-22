@@ -2209,6 +2209,11 @@
     "accountVanishedAfterCreation": "Account vanished after creation",
     "accounts": "Accounts",
     "actingPlayerSourceRequired": "Acting player source is required",
+    "actionAccept": "Accept",
+    "actionAlreadyUsed": "That has already been done",
+    "actionDone": "Done",
+    "actionFailed": "That could not be done right now.",
+    "actionFailedTitle": "Could Not Continue",
     "add": "Add",
     "addAttachment": "Add attachment",
     "addEmail": "Add Email",
@@ -2291,6 +2296,7 @@
     "leastOneRecipientRequired": "At least one recipient is required",
     "lettersNumbersDotsDashes": "Letters, numbers, dots, dashes and _ only",
     "mailPayloadMustTable": "Mail payload must be a table",
+    "mailWaitingSetUp": "You have mail waiting. Set up Mail to read it.",
     "mailbox": "Mailbox",
     "mailboxes": "Mailboxes",
     "march": "March",
@@ -4621,6 +4627,13 @@
     "useAsWallpaper": "Use as Wallpaper",
     "videos": "Videos",
     "wallpaperSet": "Wallpaper Set"
+  },
+  "qbphone": {
+    "bankMoneyRemoved": "{amount} has been removed from your balance.",
+    "contactDetailsOffered": "Contact details offered.",
+    "newMailFrom": "You received a new mail from {sender}.",
+    "noNumberToShare": "Your phone has no number to share.",
+    "theyHaveNoPhone": "They do not have a phone."
   },
   "racing": {
     "alias": "Alias",

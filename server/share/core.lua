@@ -123,16 +123,17 @@ end
 ---@param target any client-supplied recipient server id
 ---@param kind string share kind
 ---@param payload table kind-specific share data, handed to the handler on accept
+---@param opts? { pocketed?: boolean } pocketed: the target's phone may be put away
 ---@return boolean ok
 ---@return table? refusal keyed refusal envelope when ok is false
-function core.request(src, target, kind, payload)
+function core.request(src, target, kind, payload, opts)
     target = tonumber(target)
     if not target then return false, util.fail('share.invalidRecipient', 'Invalid recipient') end
     -- Sharing to yourself needs no second player, so it is the one path with no proximity cost
     -- at all; the picker never offers it either.
     if target == src then return false, util.fail('share.invalidRecipient', 'Invalid recipient') end
     if not handlers[kind] then return false, util.fail('share.unknownShareType', 'Unknown share type') end
-    if not core.canShareTo(src, target) then
+    if not core.canShareTo(src, target, opts and opts.pocketed == true) then
         return false, util.fail('share.recipientNoLongerNearby', 'Recipient is no longer nearby')
     end
 
@@ -268,9 +269,10 @@ end
 ---config.Share.Range of `src`, measured from live server-side coords.
 ---@param src number sender server id
 ---@param target number recipient server id
+---@param pocketed? boolean true lets a target whose phone is put away through
 ---@return boolean allowed
-function core.canShareTo(src, target)
-    if not openPhones[target] then return false end
+function core.canShareTo(src, target, pocketed)
+    if not openPhones[target] and not pocketed then return false end
     local o, c = coordsOf(src), coordsOf(target)
     if not o or not c then return false end
     return #(o - c) <= config.Share.Range
