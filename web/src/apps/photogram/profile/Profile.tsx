@@ -5,8 +5,9 @@ import { t } from '@/i18n';
 import { useAsyncData } from '@/hooks/useAsyncData';
 import { type Post } from '../data';
 import { MediaThumb } from '../create/Media';
-import { apiSaved, type ProfileView } from '../photogramApi';
+import { apiSaved, type ProfileView, type StoryGroup } from '../photogramApi';
 import { VerifiedCheck } from '../ui';
+import { StoryAvatar } from '../stories/StoryAvatar';
 
 export function fmtCount(n: number): string {
     if (n >= 1_000_000) return (n / 1_000_000).toFixed(n % 1_000_000 === 0 ? 0 : 1) + 'm';
@@ -16,12 +17,14 @@ export function fmtCount(n: number): string {
 
 type Grid = 'posts' | 'saved';
 
-export function Profile({ profile, posts, onEdit, onOpenPost, onOpenFollows }: {
+export function Profile({ profile, posts, story, onEdit, onOpenPost, onOpenFollows, onOpenStory }: {
     profile:       ProfileView;
     posts:         Post[];
+    story:         StoryGroup | null;
     onEdit:        () => void;
     onOpenPost:    (p: Post) => void;
     onOpenFollows: (handle: string, kind: 'followers' | 'following') => void;
+    onOpenStory:   (story: StoryGroup) => void;
 }) {
     const [grid,  setGrid]  = useState<Grid>('posts');
     const { data: saved, loading } = useAsyncData(apiSaved, [grid], { enabled: grid === 'saved' });
@@ -40,7 +43,7 @@ export function Profile({ profile, posts, onEdit, onOpenPost, onOpenFollows }: {
 
             <div className="min-h-0 flex-1 overflow-y-auto no-scrollbar">
                 <div className="flex items-center gap-6 px-4 py-3">
-                    <img src={profile.avatar} alt="" draggable={false} className="h-[108px] w-[108px] rounded-full object-cover" />
+                    <StoryAvatar src={profile.avatar} story={story} onOpen={onOpenStory} />
                     <div className="flex flex-1 justify-around text-center">
                         <Stat n={profile.posts} label={t('photogram.posts', 'Posts')} />
                         <Stat n={fmtCount(profile.followers)} label={t('photogram.followers', 'Followers')} onClick={() => onOpenFollows(profile.username, 'followers')} />

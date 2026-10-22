@@ -16,7 +16,7 @@ export interface SrvComment extends Omit<Comment, 'time'> { createdAt: number }
 interface SrvNotif { id: string; kind: NotifKind; user: User; text: string; thumb?: string; postId?: string; seen: boolean; createdAt: number }
 interface SrvConvo { id: string; user: User; last: DMsg | null; unread: number; ts: number }
 
-export type NotifKind = 'like' | 'comment' | 'mention' | 'follow' | 'follow_request' | 'follow_accept' | 'post' | 'unfollow';
+export type NotifKind = 'like' | 'comment' | 'mention' | 'story_mention' | 'follow' | 'follow_request' | 'follow_accept' | 'post' | 'unfollow';
 export type FollowStatus = 'none' | 'pending' | 'accepted' | 'self';
 
 export interface ProfileView {
@@ -38,9 +38,11 @@ export interface ProfileView {
 export interface FollowUser extends User { name?: string; followStatus: FollowStatus }
 export interface ActivityItem extends Notif { kind: NotifKind; postId?: string; seen: boolean }
 export interface Conversation { id: string; user: User; last: DMsg | null; unread: number; ts: number }
-export interface StoryFrame { id: string; url: string; caption?: string; text?: string; bg?: string }
+export interface StoryTag { handle: string; x: number; y: number }
+export interface StoryFrame { id: string; url: string; caption?: string; tags?: StoryTag[]; text?: string; bg?: string }
 export interface StoryGroup { user: User; isMe: boolean; seen: boolean; frames: StoryFrame[] }
-export type NewStory = { image: string; caption?: string } | { text: string; bg: string };
+export interface NewStoryItem { image: string; caption?: string; tags?: StoryTag[] }
+export type NewStory = { items: NewStoryItem[] } | { text: string; bg: string };
 export interface LiveEntry { user: User; liveId: string; startedAt: number }
 export interface LiveComment { id: string; user: User; text: string }
 export interface LiveJoin {
@@ -253,16 +255,22 @@ export async function apiSearch(query: string): Promise<FollowUser[]> {
 
 
 const devStoryFrames: StoryFrame[] = [];
+const devSeenStories = new Set<string>();
 let devStorySeq = 0;
 
-export async function apiStories(): Promise<{ stories: StoryGroup[]; hasOwn: boolean; lives: LiveEntry[] }> {
-    if (!isFiveM) {
-        const stories: StoryGroup[] = STORIES.map(s => ({ user: s.user, isMe: false, seen: !!s.seen, frames: s.frames.map((url, i) => ({ id: `${s.user.id}-${i}`, url })) }));
-        if (devStoryFrames.length > 0) {
-            stories.unshift({ user: { id: 'me', handle: DEV_ME.username, avatar: DEV_ME.avatar, verified: true }, isMe: true, seen: false, frames: [...devStoryFrames] });
-        }
-        return { stories, hasOwn: devStoryFrames.length > 0, lives: [] };
+function devStoryGroups(): StoryGroup[] {
+    const groups: StoryGroup[] = STORIES.map(s => {
+        const frames = s.frames.map((url, i) => ({ id: `${s.user.id}-${i}`, url }));
+        return { user: s.user, isMe: false, seen: !!s.seen || frames.every(f => devSeenStories.has(f.id)), frames };
+    });
+    if (devStoryFrames.length > 0) {
+        groups.unshift({ user: { id: 'me', handle: DEV_ME.username, avatar: DEV_ME.avatar, verified: true }, isMe: true, seen: devStoryFrames.every(f => devSeenStories.has(f.id)), frames: [...devStoryFrames] });
     }
+    return groups;
+}
+
+export async function apiStories(): Promise<{ stories: StoryGroup[]; hasOwn: boolean; lives: LiveEntry[] }> {
+    if (!isFiveM) return { stories: devStoryGroups(), hasOwn: devStoryFrames.length > 0, lives: [] };
     const r = await call<{ stories: StoryGroup[]; hasOwn: boolean; lives?: LiveEntry[] }>('sd-phone:photogram:stories');
     if (!r) return { stories: [], hasOwn: false, lives: [] };
     return {
@@ -333,10 +341,16 @@ export async function apiLiveTransport(liveId: string, relay: boolean): Promise<
     await fetchNui('sd-phone:photogram:liveTransport', { liveId, relay });
 }
 
+export async function apiUserStories(handle: string): Promise<StoryGroup | null> {
+    if (!isFiveM) return devStoryGroups().find(g => g.user.handle === handle) ?? null;
+    const r = await call<{ story?: StoryGroup | false }>('sd-phone:photogram:userStories', { handle });
+    return r?.story ? { ...r.story, user: fixUser(r.story.user) } : null;
+}
+
 export async function apiAddStory(story: NewStory): Promise<Envelope> {
     if (!isFiveM) {
-        const id = `dev-story-${++devStorySeq}`;
-        devStoryFrames.push('text' in story ? { id, url: '', text: story.text, bg: story.bg } : { id, url: story.image, caption: story.caption });
+        if ('text' in story) devStoryFrames.push({ id: `dev-story-${++devStorySeq}`, url: '', text: story.text, bg: story.bg });
+        else for (const item of story.items) devStoryFrames.push({ id: `dev-story-${++devStorySeq}`, url: item.image, caption: item.caption, tags: item.tags });
         return { success: true };
     }
     return apiCall('sd-phone:photogram:addStory', story);
@@ -352,7 +366,7 @@ export async function apiDeleteStory(storyId: string): Promise<Envelope> {
 }
 
 export async function apiMarkStorySeen(storyId: string): Promise<void> {
-    if (!isFiveM) return;
+    if (!isFiveM) { devSeenStories.add(storyId); return; }
     await fetchNui('sd-phone:photogram:markStorySeen', { storyId });
 }
 

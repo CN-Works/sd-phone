@@ -135,6 +135,7 @@ function store.ensureSchema()
             caption     VARCHAR(500) NULL,
             body        TEXT         NULL,
             bg          VARCHAR(16)  NULL,
+            tags        JSON         NULL,
             created_at  BIGINT       NOT NULL,
             PRIMARY KEY (id),
             INDEX idx_photogram_stories_author (author, created_at),
@@ -203,6 +204,7 @@ function store.ensureSchema()
         caption = 'caption VARCHAR(500) NULL',
         body    = 'body TEXT NULL',
         bg      = 'bg VARCHAR(16) NULL',
+        tags    = 'tags JSON NULL',
     })
 
     -- Referential integrity, added on boot so existing installs migrate with no manual SQL.
@@ -636,16 +638,16 @@ function store.commentLikeCount(commentId)
     return row and tonumber(row.n) or 0
 end
 
----Persists a story frame: a photo or video with an optional caption, or a text card on a
----background preset (image '').
+---Persists a story frame: a photo or video with an optional caption and people tags, or a text
+---card on a background preset (image '').
 ---@param id string story id (store.newId)
 ---@param author string account handle
----@param frame table { image: string, caption: string|nil, body: string|nil, bg: string|nil }
+---@param frame table { image: string, caption: string|nil, tags: table[]|nil, body: string|nil, bg: string|nil }
 ---@param createdAt integer unix seconds
 function store.insertStory(id, author, frame, createdAt)
     MySQL.insert.await(
-        'INSERT INTO phone_photogram_stories (id, author, image, caption, body, bg, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        { id, author, frame.image, frame.caption, frame.body, frame.bg, createdAt }
+        'INSERT INTO phone_photogram_stories (id, author, image, caption, body, bg, tags, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        { id, author, frame.image, frame.caption, frame.body, frame.bg, frame.tags and encodeJson(frame.tags) or nil, createdAt }
     )
 end
 
@@ -660,7 +662,7 @@ end
 function store.activeStoriesFor(viewer, cutoff)
     return MySQL.query.await([[
         SELECT * FROM (
-            SELECT s.id, s.author, s.image, s.caption, s.body, s.bg, s.created_at,
+            SELECT s.id, s.author, s.image, s.caption, s.body, s.bg, s.tags, s.created_at,
                    pr.display_name, pr.avatar, pr.verified
             FROM phone_photogram_stories s
             JOIN phone_photogram_profiles pr ON pr.username = s.author
@@ -673,6 +675,23 @@ function store.activeStoriesFor(viewer, cutoff)
         ) recent
         ORDER BY recent.author ASC, recent.created_at ASC
     ]], { cutoff, viewer, viewer }) or {}
+end
+
+---One author's active (non-expired) stories, oldest first, with the author's profile card fields.
+---Read-only.
+---@param author string account handle
+---@param cutoff integer unix seconds - stories created at or before this are expired
+---@return table[] rows
+function store.activeStoriesBy(author, cutoff)
+    return MySQL.query.await([[
+        SELECT s.id, s.author, s.image, s.caption, s.body, s.bg, s.tags, s.created_at,
+               pr.display_name, pr.avatar, pr.verified
+        FROM phone_photogram_stories s
+        JOIN phone_photogram_profiles pr ON pr.username = s.author
+        WHERE s.author = ? AND s.created_at > ?
+        ORDER BY s.created_at ASC
+        LIMIT 100
+    ]], { author, cutoff }) or {}
 end
 
 ---How many live (non-expired) stories an author currently holds. Read-only.

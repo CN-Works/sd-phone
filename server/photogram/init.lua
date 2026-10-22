@@ -50,6 +50,7 @@ register('followRequests',   function(src) return actions.followRequests(src) en
 register('followList',       function(src, payload) return actions.followList(src, payload) end)
 register('search',           function(src, payload) return actions.search(src, payload) end)
 register('stories',          function(src) return actions.stories(src) end)
+register('userStories',      function(src, payload) return actions.userStories(src, payload) end)
 register('addStory',         function(src, payload) return actions.addStory(src, payload) end)
 register('deleteStory',      function(src, payload) return actions.deleteStory(src, payload) end)
 register('markStorySeen',    function(src, payload) return actions.markStorySeen(src, payload) end)

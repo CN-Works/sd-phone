@@ -93,7 +93,9 @@ export function Photogram({ onClose: _onClose }: { onClose: () => void }) {
             .catch(() => setLiveEnabled(false));
     }, []);
     const [storyPick,  setStoryPick]  = useState(false);
-    const [storyDraft, setStoryDraft] = useState<{ media?: string } | null>(null);
+    const [storyDraft, setStoryDraft] = useState<{ media?: string[] } | null>(null);
+    const [profileStory, setProfileStory] = useState<StoryGroup | null>(null);
+    const [storyNonce, setStoryNonce] = useState(0);
     const [sharePost,  setSharePost]  = useState<Post | null>(null);
     const [pendingDelete, setPendingDelete] = useState<Post | null>(null);
     const [liveConfirm, setLiveConfirm] = useState(false);
@@ -115,12 +117,12 @@ export function Photogram({ onClose: _onClose }: { onClose: () => void }) {
 
     const myUser: User | null = me ? { id: me.username, handle: me.username, avatar: me.avatar, verified: me.verified } : null;
 
-    const refreshHome = useCallback(() => {
-        return Promise.all([
-            apiFeed().then(setPosts),
-            apiStories().then(r => { setStories(r.stories); setHasOwnStory(r.hasOwn); setLives(r.lives); }),
-        ]);
+    const refreshStories = useCallback(() => {
+        return apiStories().then(r => { setStories(r.stories); setHasOwnStory(r.hasOwn); setLives(r.lives); });
     }, []);
+    const refreshHome = useCallback(() => {
+        return Promise.all([apiFeed().then(setPosts), refreshStories()]);
+    }, [refreshStories]);
     const refreshMe = useCallback(() => {
         void apiProfile().then(setMe);
         void apiProfilePosts().then(setMyGrid);
@@ -245,8 +247,8 @@ export function Photogram({ onClose: _onClose }: { onClose: () => void }) {
         if (tab === 'search') void apiExplore().then(setExplore);
     }, [tab]));
     useNuiEvent('sd-phone:photogram:liveChanged', useCallback(() => {
-        void apiStories().then(r => { setStories(r.stories); setHasOwnStory(r.hasOwn); setLives(r.lives); });
-    }, []));
+        void refreshStories();
+    }, [refreshStories]));
     useNuiEvent('sd-phone:photogram:postRemoved', useCallback((data) => {
         if (!data) return;
         const id = data.postId;
@@ -260,6 +262,7 @@ export function Photogram({ onClose: _onClose }: { onClose: () => void }) {
         const res = await apiAddStory(story);
         if (res.success) {
             setStoryDraft(null);
+            setStoryNonce(n => n + 1);
             void refreshHome();
         }
         return res;
@@ -268,10 +271,16 @@ export function Photogram({ onClose: _onClose }: { onClose: () => void }) {
         const res = await apiDeleteStory(storyId);
         if (res.success) {
             setStories(prev => prev.map(g => (g.isMe ? { ...g, frames: g.frames.filter(f => f.id !== storyId) } : g)));
+            setProfileStory(prev => prev && { ...prev, frames: prev.frames.filter(f => f.id !== storyId) });
+            setStoryNonce(n => n + 1);
             void refreshHome();
         }
         return res;
     }, [refreshHome]);
+    const afterStoryViewer = useCallback(() => {
+        setStoryNonce(n => n + 1);
+        void refreshStories();
+    }, [refreshStories]);
 
     async function openComments(postId: string) {
         setCommentId(postId);
@@ -361,13 +370,14 @@ export function Photogram({ onClose: _onClose }: { onClose: () => void }) {
                     {tab === 'home'     && <Feed posts={posts} me={myUser} stories={stories} lives={lives} hasOwnStory={hasOwnStory} onLike={toggleLike} onDoubleLike={likeOn} onSave={toggleSave} onComment={openComments} onOpenStory={setStoryIdx} onOpenLive={setViewLive} onAddStory={() => setStoryMenu(true)} onOpenDMs={() => setDmOpen(true)} onOpenProfile={setViewHandle} onShare={setSharePost} onDelete={setPendingDelete} onRefresh={refreshHome} dmCount={counts.dms} />}
                     {tab === 'search'   && <Explore posts={explore} onOpen={p => setDetail(p)} onOpenProfile={setViewHandle} />}
                     {tab === 'activity' && <Activity items={activity} requests={requests} onRespond={async (h, a) => { await import('./photogramApi').then(m => m.apiRespondFollow(h, a)); refreshActivity(); }} onOpenProfile={setViewHandle} onOpenPost={openDetailById} onDismiss={(id) => { setActivity(prev => prev.filter(n => n.id !== id)); void apiDismissNotification(id); }} />}
-                    {tab === 'profile'  && me && <Profile profile={me} posts={myGrid} onEdit={() => setEditing(true)} onOpenPost={p => setDetail(p)} onOpenFollows={(handle, kind) => setFollows({ handle, kind })} />}
+                    {tab === 'profile'  && me && <Profile profile={me} posts={myGrid} story={stories.find(g => g.isMe) ?? null} onEdit={() => setEditing(true)} onOpenPost={p => setDetail(p)} onOpenFollows={(handle, kind) => setFollows({ handle, kind })} onOpenStory={setProfileStory} />}
                 </TabPane>
             </div>
 
             <TabBar tab={tab} onTab={setTab} onCreate={() => setCreateOpen(true)} avatar={myUser?.avatar} activityCount={counts.activity} />
 
-            {storyIdx !== null && <StoryViewer stories={stories} startIndex={storyIdx} onClose={() => setStoryIdx(null)} onDelete={deleteStory} />}
+            {storyIdx !== null && <StoryViewer stories={stories} startIndex={storyIdx} onClose={() => { setStoryIdx(null); afterStoryViewer(); }} onDelete={deleteStory} onOpenProfile={h => { setStoryIdx(null); afterStoryViewer(); setViewHandle(h); }} />}
+            {profileStory && <StoryViewer stories={[profileStory]} startIndex={0} onClose={() => { setProfileStory(null); afterStoryViewer(); }} onDelete={deleteStory} onOpenProfile={h => { setProfileStory(null); afterStoryViewer(); setViewHandle(h); }} />}
             {createOpen && <CreateSheet onClose={() => setCreateOpen(false)} onPost={addPost} animateIn={animateNav} />}
             {dmOpen && myUser && <DirectMessages me={myUser} onClose={() => setDmOpen(false)} onOpenPost={openDetailById} animateIn={animateNav} />}
             {detail && (
@@ -384,7 +394,9 @@ export function Photogram({ onClose: _onClose }: { onClose: () => void }) {
                         onOpenProfile={setViewHandle}
                         onOpenPost={p => setDetail(p)}
                         onOpenFollows={(handle, kind) => setFollows({ handle, kind })}
+                        onOpenStory={setProfileStory}
                         onChanged={refreshHome}
+                        storyNonce={storyNonce}
                         animateIn={animateNav}
                     />
                 </div>
@@ -415,7 +427,9 @@ export function Photogram({ onClose: _onClose }: { onClose: () => void }) {
             )}
             {storyPick && (
                 <MediaPickerSheet
-                    onSelect={p => { setStoryDraft({ media: p.url }); setStoryPick(false); }}
+                    multiple
+                    max={10}
+                    onSelectMany={ps => { if (ps.length > 0) setStoryDraft({ media: ps.map(p => p.url) }); setStoryPick(false); }}
                     onClose={() => setStoryPick(false)}
                 />
             )}
