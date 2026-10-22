@@ -17,13 +17,14 @@ import { signOutAllForApp } from '@/shared/signOutAll';
 import { logOutOrSwitch, switchTargetLabel } from '@/shared/logOutOrSwitch';
 import { IG, type Comment as IGComment, type Post, type ProfileData, type User } from './data';
 import {
-    apiActivity, apiAddComment, apiAddStory, apiComments, apiCounts, apiCreate, apiDeleteAccount, apiDeletePost, apiDeleteStory, apiDismissNotification, apiExplore, apiFeed,
+    apiActivity, apiAddComment, apiAddStory, apiComments, apiCounts, apiCreate, apiDeleteAccount, apiDeletePost, apiDeleteStory, apiDismissNotification, apiShareProfile, apiExplore, apiFeed,
     apiFollowRequests, apiPost, apiProfile, apiProfilePosts, apiStories, apiToggleCommentLike,
     apiToggleLike, apiToggleSave, apiUpdateProfile, apiWatch, mapComment,
     type ActivityItem, type FollowUser, type LiveEntry, type NewStory, type ProfileView, type SrvComment, type StoryGroup,
 } from './photogramApi';
 import { ActionSheet } from '@/ui/ActionSheet';
 import { MediaPickerSheet } from '@/shared/MediaPickerSheet';
+import { ShareSheet } from '@/shared/ShareSheet';
 import { TabBar, type GTab } from './TabBar';
 import { Feed } from './feed/Feed';
 import { Explore } from './feed/Explore';
@@ -55,6 +56,7 @@ export function Photogram({ onClose: _onClose }: { onClose: () => void }) {
     const [dmOpen,     setDmOpen]     = useSessionState('photogram:dmOpen', false);
     const [commentId,  setCommentId]  = useSessionState<string | null>('photogram:commentId', null);
     const [editing,    setEditing]    = useState(false);
+    const [sharingMe,  setSharingMe]  = useState(false);
 
     const [me,         setMe]         = useState<ProfileView | null>(null);
     const [posts,      setPosts]      = useState<Post[]>([]);
@@ -76,15 +78,17 @@ export function Photogram({ onClose: _onClose }: { onClose: () => void }) {
     const [adding,     setAdding]     = useState(false);
     const [liveEnabled, setLiveEnabled] = useState(!isFiveM);
 
-    useDeeplinkTarget('photogram', target => {
+    function openProfileFromLink(handle: string) {
         setDetail(null);
         setFollows(null);
         setCommentId(null);
         setDmOpen(false);
         setCreateOpen(false);
         setEditing(false);
-        setViewHandle(String(target.handle));
-    });
+        setViewHandle(handle);
+    }
+    useDeeplinkTarget('photogram', target => openProfileFromLink(String(target.handle)));
+    useNuiEvent('sd-phone:photogram:openProfile', data => { if (data?.handle) openProfileFromLink(String(data.handle)); });
 
     useEffect(() => {
         if (!isFiveM) return;
@@ -370,7 +374,7 @@ export function Photogram({ onClose: _onClose }: { onClose: () => void }) {
                     {tab === 'home'     && <Feed posts={posts} me={myUser} stories={stories} lives={lives} hasOwnStory={hasOwnStory} onLike={toggleLike} onDoubleLike={likeOn} onSave={toggleSave} onComment={openComments} onOpenStory={setStoryIdx} onOpenLive={setViewLive} onAddStory={() => setStoryMenu(true)} onOpenDMs={() => setDmOpen(true)} onOpenProfile={setViewHandle} onShare={setSharePost} onDelete={setPendingDelete} onRefresh={refreshHome} dmCount={counts.dms} />}
                     {tab === 'search'   && <Explore posts={explore} onOpen={p => setDetail(p)} onOpenProfile={setViewHandle} />}
                     {tab === 'activity' && <Activity items={activity} requests={requests} onRespond={async (h, a) => { await import('./photogramApi').then(m => m.apiRespondFollow(h, a)); refreshActivity(); }} onOpenProfile={setViewHandle} onOpenPost={openDetailById} onDismiss={(id) => { setActivity(prev => prev.filter(n => n.id !== id)); void apiDismissNotification(id); }} />}
-                    {tab === 'profile'  && me && <Profile profile={me} posts={myGrid} story={stories.find(g => g.isMe) ?? null} onEdit={() => setEditing(true)} onOpenPost={p => setDetail(p)} onOpenFollows={(handle, kind) => setFollows({ handle, kind })} onOpenStory={setProfileStory} />}
+                    {tab === 'profile'  && me && <Profile profile={me} posts={myGrid} story={stories.find(g => g.isMe) ?? null} onEdit={() => setEditing(true)} onShare={() => setSharingMe(true)} onOpenPost={p => setDetail(p)} onOpenFollows={(handle, kind) => setFollows({ handle, kind })} onOpenStory={setProfileStory} />}
                 </TabPane>
             </div>
 
@@ -443,6 +447,13 @@ export function Photogram({ onClose: _onClose }: { onClose: () => void }) {
                 />
             )}
             {sharePost && <SharePostSheet post={sharePost} onClose={() => setSharePost(null)} />}
+            {sharingMe && (
+                <ShareSheet top="60%" onClose={() => setSharingMe(false)} onShare={target => apiShareProfile(target.id)}>
+                    <p className="px-2 pb-2 text-center text-[15px] leading-snug text-ios-gray">
+                        {t('photogram.shareProfileHint', 'Tap someone nearby to send your profile. When they accept, they follow you.')}
+                    </p>
+                </ShareSheet>
+            )}
             {pendingDelete && (
                 <AlertDialog
                     title={t('photogram.deletePostTitle', 'Delete Post?')}

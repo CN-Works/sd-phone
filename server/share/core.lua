@@ -62,6 +62,7 @@ local function kindLabel(kind)
     if kind == 'photo'    then return 'photo' end
     if kind == 'signature-request' then return 'signature request' end
     if kind == 'id-card' then return 'ID card' end
+    if kind == 'photogram-profile' then return 'Photogram profile' end
     return 'contact'
 end
 
@@ -123,7 +124,8 @@ end
 ---@param target any client-supplied recipient server id
 ---@param kind string share kind
 ---@param payload table kind-specific share data, handed to the handler on accept
----@param opts? { pocketed?: boolean } pocketed: the target's phone may be put away
+---@param opts? { pocketed?: boolean, detail?: string } pocketed: the target's phone may be put away;
+---detail: a short line the recipient's prompt shows alongside the kind (e.g. a handle)
 ---@return boolean ok
 ---@return table? refusal keyed refusal envelope when ok is false
 function core.request(src, target, kind, payload, opts)
@@ -157,6 +159,7 @@ function core.request(src, target, kind, payload, opts)
 
     TriggerClientEvent('sd-phone:client:airshare:request', target, {
         id = id, kind = kind, fromName = nameFor(target, src),
+        detail = opts and type(opts.detail) == 'string' and opts.detail:sub(1, 64) or nil,
     })
     return true
 end

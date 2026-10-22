@@ -17,11 +17,12 @@ export function fmtCount(n: number): string {
 
 type Grid = 'posts' | 'saved';
 
-export function Profile({ profile, posts, story, onEdit, onOpenPost, onOpenFollows, onOpenStory }: {
+export function Profile({ profile, posts, story, onEdit, onShare, onOpenPost, onOpenFollows, onOpenStory }: {
     profile:       ProfileView;
     posts:         Post[];
     story:         StoryGroup | null;
     onEdit:        () => void;
+    onShare:       () => void;
     onOpenPost:    (p: Post) => void;
     onOpenFollows: (handle: string, kind: 'followers' | 'following') => void;
     onOpenStory:   (story: StoryGroup) => void;
@@ -58,7 +59,7 @@ export function Profile({ profile, posts, story, onEdit, onOpenPost, onOpenFollo
 
                 <div className="flex gap-2.5 px-4 pb-3">
                     <button type="button" onClick={onEdit} className="flex-1 rounded-[12px] bg-black/[0.06] py-3 text-[19px] font-semibold text-black active:opacity-70">{t('photogram.editProfile', 'Edit profile')}</button>
-                    <button type="button" className="flex-1 rounded-[12px] bg-black/[0.06] py-3 text-[19px] font-semibold text-black active:opacity-70">{t('photogram.shareProfile', 'Share profile')}</button>
+                    <button type="button" onClick={onShare} className="flex-1 rounded-[12px] bg-black/[0.06] py-3 text-[19px] font-semibold text-black active:opacity-70">{t('photogram.shareProfile', 'Share profile')}</button>
                 </div>
 
                 {profile.isMe ? (

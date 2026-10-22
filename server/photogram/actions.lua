@@ -12,6 +12,8 @@ local live      = require 'server.photogram.live'
 local moderation = require 'server.admin.moderation'
 ---@type table Media trust boundary: gallery/voice ownership and GIPHY host validation.
 local mediaGuard = require 'server.media.guard'
+---@type table AirShare core (server.share.core): nearby-target validation + the request/accept handshake.
+local share     = require 'server.share.core'
 ---@type table Watcher registry (server.watchers): shared with server.photogram.live and init.
 local watchers  = require('server.watchers').of('photogram')
 
@@ -844,6 +846,47 @@ function actions.toggleFollow(src, payload)
     store.addFollow(acc.username, target, 'accepted', os.time())
     notify(target, 'follow', acc.username, nil, nil)
     return ok({ status = 'accepted' })
+end
+
+---Offers the viewer's own profile to a nearby player over AirShare; accepting it follows them.
+---@param src integer player server id
+---@param payload table { target: integer }
+---@return table result
+function actions.shareProfile(src, payload)
+    payload = type(payload) == 'table' and payload or {}
+    local acc = viewerAccount(src)
+    if not acc then return fail('photogram.notSigned', 'Not signed in') end
+    local me = ensureProfile(acc)
+    local sent, refusal = share.request(src, payload.target, 'photogram-profile', { handle = me.username }, { detail = me.username })
+    if not sent then return refusal end
+    return ok()
+end
+
+---AirShare delivery for 'photogram-profile': the recipient follows the shared account, accepted
+---outright because its owner offered it, and their phone opens on that profile.
+---@param targetSrc integer recipient server id
+---@param payload table { handle: string }
+---@return boolean delivered
+---@return string|nil reason recipient-facing refusal
+function actions.followFromShare(targetSrc, payload)
+    local owner = type(payload) == 'table' and store.getProfile(trim(payload.handle)) or nil
+    if not owner then return false, 'That Photogram account no longer exists.' end
+    local acc = viewerAccount(targetSrc)
+    if not acc then return false, 'Sign in to Photogram to follow them.' end
+    ensureProfile(acc)
+    if acc.username:lower() ~= owner.username:lower() then
+        local prior = store.followStatus(acc.username, owner.username)
+        if prior == 'pending' then
+            store.setFollowStatus(acc.username, owner.username, 'accepted')
+            store.deleteRequestNotification(owner.username, acc.username)
+            notify(owner.username, 'follow', acc.username, nil, nil)
+        elseif prior ~= 'accepted' then
+            store.addFollow(acc.username, owner.username, 'accepted', os.time())
+            notify(owner.username, 'follow', acc.username, nil, nil)
+        end
+    end
+    TriggerClientEvent('sd-phone:client:photogram:openProfile', targetSrc, owner.username)
+    return true
 end
 
 ---Owner accepts or declines a pending follow request. Accept upgrades the row and notifies the

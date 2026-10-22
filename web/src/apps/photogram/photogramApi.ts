@@ -341,6 +341,11 @@ export async function apiLiveTransport(liveId: string, relay: boolean): Promise<
     await fetchNui('sd-phone:photogram:liveTransport', { liveId, relay });
 }
 
+export async function apiShareProfile(target: number): Promise<boolean> {
+    if (!isFiveM) return true;
+    return (await apiCall('sd-phone:photogram:shareProfile', { target })).success;
+}
+
 export async function apiUserStories(handle: string): Promise<StoryGroup | null> {
     if (!isFiveM) return devStoryGroups().find(g => g.user.handle === handle) ?? null;
     const r = await call<{ story?: StoryGroup | false }>('sd-phone:photogram:userStories', { handle });
