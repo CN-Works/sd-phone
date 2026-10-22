@@ -17,10 +17,10 @@ import { signOutAllForApp } from '@/shared/signOutAll';
 import { logOutOrSwitch, switchTargetLabel } from '@/shared/logOutOrSwitch';
 import { IG, type Comment as IGComment, type Post, type ProfileData, type User } from './data';
 import {
-    apiActivity, apiAddComment, apiAddStory, apiComments, apiCounts, apiCreate, apiDeleteAccount, apiDeletePost, apiDismissNotification, apiExplore, apiFeed,
+    apiActivity, apiAddComment, apiAddStory, apiComments, apiCounts, apiCreate, apiDeleteAccount, apiDeletePost, apiDeleteStory, apiDismissNotification, apiExplore, apiFeed,
     apiFollowRequests, apiPost, apiProfile, apiProfilePosts, apiStories, apiToggleCommentLike,
     apiToggleLike, apiToggleSave, apiUpdateProfile, apiWatch, mapComment,
-    type ActivityItem, type FollowUser, type LiveEntry, type ProfileView, type SrvComment, type StoryGroup,
+    type ActivityItem, type FollowUser, type LiveEntry, type NewStory, type ProfileView, type SrvComment, type StoryGroup,
 } from './photogramApi';
 import { ActionSheet } from '@/ui/ActionSheet';
 import { MediaPickerSheet } from '@/shared/MediaPickerSheet';
@@ -34,6 +34,7 @@ import { FollowList } from './profile/FollowList';
 import { PostDetail } from './feed/PostDetail';
 import { SharePostSheet } from './create/SharePostSheet';
 import { StoryViewer } from './stories/StoryViewer';
+import { StoryComposer } from './stories/StoryComposer';
 import { CreateSheet } from './create/CreateSheet';
 import { Comments } from './feed/Comments';
 import { DirectMessages } from './dms/DirectMessages';
@@ -92,6 +93,7 @@ export function Photogram({ onClose: _onClose }: { onClose: () => void }) {
             .catch(() => setLiveEnabled(false));
     }, []);
     const [storyPick,  setStoryPick]  = useState(false);
+    const [storyDraft, setStoryDraft] = useState<{ media?: string } | null>(null);
     const [sharePost,  setSharePost]  = useState<Post | null>(null);
     const [pendingDelete, setPendingDelete] = useState<Post | null>(null);
     const [liveConfirm, setLiveConfirm] = useState(false);
@@ -254,6 +256,23 @@ export function Photogram({ onClose: _onClose }: { onClose: () => void }) {
         setCommentId(prev => (prev === id ? null : prev));
     }, [setCommentId, setDetail]));
 
+    const shareStory = useCallback(async (story: NewStory) => {
+        const res = await apiAddStory(story);
+        if (res.success) {
+            setStoryDraft(null);
+            void refreshHome();
+        }
+        return res;
+    }, [refreshHome]);
+    const deleteStory = useCallback(async (storyId: string) => {
+        const res = await apiDeleteStory(storyId);
+        if (res.success) {
+            setStories(prev => prev.map(g => (g.isMe ? { ...g, frames: g.frames.filter(f => f.id !== storyId) } : g)));
+            void refreshHome();
+        }
+        return res;
+    }, [refreshHome]);
+
     async function openComments(postId: string) {
         setCommentId(postId);
         const cs = await apiComments(postId);
@@ -348,7 +367,7 @@ export function Photogram({ onClose: _onClose }: { onClose: () => void }) {
 
             <TabBar tab={tab} onTab={setTab} onCreate={() => setCreateOpen(true)} avatar={myUser?.avatar} activityCount={counts.activity} />
 
-            {storyIdx !== null && <StoryViewer stories={stories} startIndex={storyIdx} onClose={() => setStoryIdx(null)} />}
+            {storyIdx !== null && <StoryViewer stories={stories} startIndex={storyIdx} onClose={() => setStoryIdx(null)} onDelete={deleteStory} />}
             {createOpen && <CreateSheet onClose={() => setCreateOpen(false)} onPost={addPost} animateIn={animateNav} />}
             {dmOpen && myUser && <DirectMessages me={myUser} onClose={() => setDmOpen(false)} onOpenPost={openDetailById} animateIn={animateNav} />}
             {detail && (
@@ -386,6 +405,7 @@ export function Photogram({ onClose: _onClose }: { onClose: () => void }) {
                 <ActionSheet
                     actions={[
                         { label: t('photogram.createStoryAction', 'Create story'), onClick: () => setStoryPick(true) },
+                        { label: t('photogram.createTextStoryAction', 'Create text story'), onClick: () => setStoryDraft({}) },
                         ...(liveEnabled
                             ? [{ label: t('photogram.goLiveAction', 'Go live'), onClick: () => setLiveConfirm(true) }]
                             : []),
@@ -395,10 +415,11 @@ export function Photogram({ onClose: _onClose }: { onClose: () => void }) {
             )}
             {storyPick && (
                 <MediaPickerSheet
-                    onSelect={p => { void apiAddStory(p.url).then(refreshHome); setStoryPick(false); }}
+                    onSelect={p => { setStoryDraft({ media: p.url }); setStoryPick(false); }}
                     onClose={() => setStoryPick(false)}
                 />
             )}
+            {storyDraft && <StoryComposer media={storyDraft.media} me={myUser} onClose={() => setStoryDraft(null)} onShare={shareStory} />}
             {switching && (
                 <AccountSwitcher
                     app="photogram"

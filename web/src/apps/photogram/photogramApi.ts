@@ -1,7 +1,7 @@
 import { t } from '@/i18n';
 import { relTimeCompact } from '@/lib/time';
 import { fetchNui, isFiveM } from '@/core/nui';
-import { apiCall, apiData as call } from '@/core/api';
+import { apiCall, apiData as call, type Envelope } from '@/core/api';
 import type { MessageDraft } from '@/shared/chat/ChatView';
 import type { RelayGrant } from '@/shared/mediaSocket';
 import type { Reaction } from '@/shared/chat/data';
@@ -38,7 +38,9 @@ export interface ProfileView {
 export interface FollowUser extends User { name?: string; followStatus: FollowStatus }
 export interface ActivityItem extends Notif { kind: NotifKind; postId?: string; seen: boolean }
 export interface Conversation { id: string; user: User; last: DMsg | null; unread: number; ts: number }
-export interface StoryGroup { user: User; isMe: boolean; seen: boolean; frames: { id: string; url: string }[] }
+export interface StoryFrame { id: string; url: string; caption?: string; text?: string; bg?: string }
+export interface StoryGroup { user: User; isMe: boolean; seen: boolean; frames: StoryFrame[] }
+export type NewStory = { image: string; caption?: string } | { text: string; bg: string };
 export interface LiveEntry { user: User; liveId: string; startedAt: number }
 export interface LiveComment { id: string; user: User; text: string }
 export interface LiveJoin {
@@ -250,10 +252,16 @@ export async function apiSearch(query: string): Promise<FollowUser[]> {
 }
 
 
+const devStoryFrames: StoryFrame[] = [];
+let devStorySeq = 0;
+
 export async function apiStories(): Promise<{ stories: StoryGroup[]; hasOwn: boolean; lives: LiveEntry[] }> {
     if (!isFiveM) {
         const stories: StoryGroup[] = STORIES.map(s => ({ user: s.user, isMe: false, seen: !!s.seen, frames: s.frames.map((url, i) => ({ id: `${s.user.id}-${i}`, url })) }));
-        return { stories, hasOwn: false, lives: [] };
+        if (devStoryFrames.length > 0) {
+            stories.unshift({ user: { id: 'me', handle: DEV_ME.username, avatar: DEV_ME.avatar, verified: true }, isMe: true, seen: false, frames: [...devStoryFrames] });
+        }
+        return { stories, hasOwn: devStoryFrames.length > 0, lives: [] };
     }
     const r = await call<{ stories: StoryGroup[]; hasOwn: boolean; lives?: LiveEntry[] }>('sd-phone:photogram:stories');
     if (!r) return { stories: [], hasOwn: false, lives: [] };
@@ -325,9 +333,22 @@ export async function apiLiveTransport(liveId: string, relay: boolean): Promise<
     await fetchNui('sd-phone:photogram:liveTransport', { liveId, relay });
 }
 
-export async function apiAddStory(image: string): Promise<void> {
-    if (!isFiveM) return;
-    await fetchNui('sd-phone:photogram:addStory', { image });
+export async function apiAddStory(story: NewStory): Promise<Envelope> {
+    if (!isFiveM) {
+        const id = `dev-story-${++devStorySeq}`;
+        devStoryFrames.push('text' in story ? { id, url: '', text: story.text, bg: story.bg } : { id, url: story.image, caption: story.caption });
+        return { success: true };
+    }
+    return apiCall('sd-phone:photogram:addStory', story);
+}
+
+export async function apiDeleteStory(storyId: string): Promise<Envelope> {
+    if (!isFiveM) {
+        const i = devStoryFrames.findIndex(f => f.id === storyId);
+        if (i >= 0) devStoryFrames.splice(i, 1);
+        return { success: true };
+    }
+    return apiCall('sd-phone:photogram:deleteStory', { storyId });
 }
 
 export async function apiMarkStorySeen(storyId: string): Promise<void> {

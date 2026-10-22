@@ -27,6 +27,15 @@ local VALID_DMKIND = { text = true, image = true, gif = true, voice = true, post
 local REACTION_SET = { ['❤️'] = true, ['👍'] = true, ['👎'] = true, ['😂'] = true }
 ---@type integer Live (<24h) story frames one account may hold at once.
 local STORY_CAP    = 50
+---@type integer Longest photo or video story caption kept, in bytes (column is VARCHAR(500)).
+local STORY_CAPTION_MAX = 500
+---@type integer Longest text story kept, in bytes.
+local STORY_TEXT_MAX    = 2000
+---@type table<string, boolean> Text story background presets, mirroring STORY_BACKGROUNDS in
+---web/src/apps/photogram/stories/backgrounds.ts.
+local STORY_BACKGROUNDS = { sunset = true, ocean = true, forest = true, berry = true, night = true }
+---@type string Background a text story falls back to when the client sends an unknown preset.
+local STORY_DEFAULT_BG  = 'sunset'
 ---@type integer How long a like/follow notification suppresses an identical repeat (seconds).
 local NOTIF_DEDUPE = 3600
 
@@ -913,6 +922,20 @@ end
 ---@type integer os.time() of the last global story prune (0 = never).
 local lastStoryPruneAt = 0
 
+---One story row as the frame the viewer plays: a media URL with its caption, or a text card.
+---@param row table phone_photogram_stories row
+---@return table frame { id, url, caption?, text?, bg? }
+local function storyFrame(row)
+    local text = row.body ~= nil and row.body ~= '' and row.body or nil
+    return {
+        id      = row.id,
+        url     = row.image,
+        caption = not text and row.caption ~= '' and row.caption or nil,
+        text    = text,
+        bg      = text and row.bg or nil,
+    }
+end
+
 ---The stories tray: active (<24h) stories from the viewer + accounts they follow, grouped per
 ---author and ordered mine-first, then unseen, then seen. Live sessions the viewer may watch ride along.
 ---@param src integer player server id
@@ -937,7 +960,7 @@ function actions.stories(src)
             groups[row.author] = g
             order[#order + 1] = row.author
         end
-        g.frames[#g.frames + 1] = { id = row.id, url = row.image }
+        g.frames[#g.frames + 1] = storyFrame(row)
         if not seen[row.id] then g.seen = false end
     end
 
@@ -956,10 +979,10 @@ function actions.stories(src)
     return ok({ stories = stories, hasOwn = mine ~= nil, lives = live.activeForViewer(acc.username) })
 end
 
----Publish a story frame: one http(s) image URL, capped at the column width. Its 24h lifetime is
----enforced at read/prune time (STORY_TTL), not stored on the row.
+---Publish a story frame: a gallery photo or video with an optional caption, or a text card on a
+---STORY_BACKGROUNDS preset. Its 24h lifetime is enforced at read/prune time (STORY_TTL).
 ---@param src integer player server id
----@param payload table { image: string }
+---@param payload table { image: string|nil, caption: string|nil, text: string|nil, bg: string|nil }
 ---@return table result
 function actions.addStory(src, payload)
     local muted = moderation.guard(player.getIdentifier(src), 'photogram'); if muted then return muted end
@@ -968,14 +991,37 @@ function actions.addStory(src, payload)
     if not acc then return fail('photogram.notSigned', 'Not signed in') end
     local slow = throttle(src, 'story'); if slow then return slow end
     ensureProfile(acc)
-    local image = mediaGuard.photo(player.getIdentifier(src), payload.image)
-    if not image then return fail('photogram.addPhoto', 'Add a photo') end
+    local frame
+    if payload.text ~= nil then
+        local text = util.limitedString(payload.text, STORY_TEXT_MAX)
+        if not text then return fail('photogram.storyTextEmpty', 'Write something first') end
+        frame = { image = '', body = text, bg = STORY_BACKGROUNDS[payload.bg] and payload.bg or STORY_DEFAULT_BG }
+    else
+        local image = mediaGuard.photo(player.getIdentifier(src), payload.image)
+        if not image then return fail('photogram.addPhoto', 'Add a photo') end
+        frame = { image = image, caption = util.limitedString(payload.caption, STORY_CAPTION_MAX) }
+    end
     -- Frames expire on their own after STORY_TTL, so this caps the live window rather than the
     -- account: a full tray drains back to zero a day later.
     if store.countActiveStories(acc.username, os.time() - STORY_TTL) >= STORY_CAP then
         return fail('photogram.storyFullToday', 'Your story is full for today')
     end
-    store.insertStory(store.newId(), acc.username, image, os.time())
+    store.insertStory(store.newId(), acc.username, frame, os.time())
+    return ok()
+end
+
+---Deletes one of the viewer's own story frames.
+---@param src integer player server id
+---@param payload table { storyId: string }
+---@return table result
+function actions.deleteStory(src, payload)
+    payload = type(payload) == 'table' and payload or {}
+    local acc = viewerAccount(src)
+    if not acc then return fail('photogram.notSigned', 'Not signed in') end
+    local row = store.getStoryRow(trim(payload.storyId))
+    if not row then return fail('photogram.storyNotFound', 'Story not found') end
+    if row.author ~= acc.username then return fail('photogram.notStory', 'Not your story') end
+    store.deleteStory(row.id)
     return ok()
 end
 
