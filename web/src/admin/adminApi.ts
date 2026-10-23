@@ -47,8 +47,23 @@ export const adminSearch = (q: string, cursor?: string | number | null) =>
         ? call<{ players: AdminPlayerHit[]; nextCursor?: string | number | null }>('sd-phone:admin:search', { q, cursor })
         : seed({ players: devSearch(q), nextCursor: null });
 
-export const adminOverview = (cid: string) =>
-    isFiveM ? call<AdminOverview>('sd-phone:admin:overview', { cid }) : seed(devOverview(cid));
+export const adminOverview = async (cid: string) => {
+    const res = isFiveM
+        ? await call<AdminOverview>('sd-phone:admin:overview', { cid })
+        : await seed(devOverview(cid));
+    if (!res.success || !res.data) return res;
+
+    // Older servers omit these on a character with no phone profile, and empty Lua tables
+    // can arrive as objects. Every detail tab needs real arrays before it reads or maps them.
+    return {
+        ...res,
+        data: {
+            ...res.data,
+            accounts: Array.isArray(res.data.accounts) ? res.data.accounts : [],
+            birdy:    Array.isArray(res.data.birdy) ? res.data.birdy : [],
+        },
+    };
+};
 
 export const adminSetNumber = (cid: string, number: string) =>
     isFiveM ? call<{ number: string }>('sd-phone:admin:setNumber', { cid, number }) : seed({ number });
