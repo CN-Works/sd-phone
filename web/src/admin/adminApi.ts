@@ -53,8 +53,6 @@ export const adminOverview = async (cid: string) => {
         : await seed(devOverview(cid));
     if (!res.success || !res.data) return res;
 
-    // Older servers omit these on a character with no phone profile, and empty Lua tables
-    // can arrive as objects. Every detail tab needs real arrays before it reads or maps them.
     return {
         ...res,
         data: {
