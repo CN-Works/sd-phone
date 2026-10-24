@@ -60,7 +60,11 @@ export function Composer({ me, onClose, onPost }: {
     }
 
     function togglePoll() {
-        if (pollOptions) { setPollClosing(true); return; }
+        if (pollOptions) {
+            if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) setPollOptions(null);
+            else setPollClosing(true);
+            return;
+        }
         setPollClosing(false);
         setPollOptions(['', '']);
         setImages([]);
